@@ -1,4 +1,5 @@
 package com.example.presence
+
 import android.content.Context
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
@@ -24,10 +25,9 @@ class NetWork(private val context: Context) {
                 .get()
                 .addOnSuccessListener { documents ->
                     if (!documents.isEmpty) {
-
-
                         Toast.makeText(context, "Connecté à un WiFi de l’entreprise", Toast.LENGTH_SHORT).show()
                         onResult(true)
+                        enregistrerWifiInfo(wifiInfo) // Appel de la fonction pour enregistrer les informations Wi-Fi
                     } else {
                         Toast.makeText(context, "Veuillez vous connecter au WiFi de l’entreprise", Toast.LENGTH_LONG).show()
                         onResult(false)
@@ -43,8 +43,18 @@ class NetWork(private val context: Context) {
         }
     }
 
+    private fun listerEquipements() {
+        val equipementManager = EquipementManager(context)
+        equipementManager.listerEquipements { equipements ->
+            equipements.forEach { equipement ->
+                Log.d("EquipementInfo", "Nom: ${equipement.nom}, MAC: ${equipement.mac}, Localisation: ${equipement.localisation}")
+                Toast.makeText(context, "Nom: ${equipement.nom}, MAC: ${equipement.mac}, Localisation: ${equipement.localisation}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     fun showWifiInfo() {
-        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val wifiInfo: WifiInfo? = wifiManager.connectionInfo
 
         if (wifiInfo != null) {
@@ -56,7 +66,28 @@ class NetWork(private val context: Context) {
             Log.d("NetworkInfo", message)
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         } else {
-            Toast.makeText(context, "Aucune information WiFi disponible", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Aucune information Wi-Fi disponible", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun enregistrerWifiInfo(wifiInfo: WifiInfo) {
+        val ssid = wifiInfo.ssid.replace("\"", "")
+        val bssid = wifiInfo.bssid ?: "Non disponible"
+        val macAddress = wifiInfo.macAddress ?: "Non disponible"
+
+        val wifiData = hashMapOf(
+            "ssid" to ssid,
+            "bssid" to bssid,
+            "macAddress" to macAddress
+        )
+
+        db.collection("wifi_info")
+            .add(wifiData)
+            .addOnSuccessListener {
+                Log.d("WifiInfo", "Informations Wi-Fi enregistrées avec succès.")
+            }
+            .addOnFailureListener { e ->
+                Log.e("WifiInfo", "Erreur lors de l'enregistrement des informations Wi-Fi: ${e.message}")
+            }
     }
 }
